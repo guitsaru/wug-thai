@@ -54,7 +54,27 @@ text
 
 ```elixir
 text = """
-: โอ้ แล้วอาทิตย์หน้าคุณจะไปเที่ยวที่ไหนเหรอครับ 
+พ่อค้า
+"""
+
+text
+|> Pipeline.call()
+|> Wug.Document.tokens()
+```
+
+```elixir
+text = """
+ประกาศกระทรวง
+"""
+
+text
+|> Pipeline.call()
+|> Wug.Document.tokens()
+```
+
+```elixir
+text = """
+เจก
 """
 
 text

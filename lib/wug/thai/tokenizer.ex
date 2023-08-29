@@ -136,12 +136,13 @@ defmodule Wug.Thai.Tokenizer do
     end
   end
 
-  @spec pick_choice([String.t()]) :: String.t() | nil
+  @spec pick_choice([{String.t(), float()}]) :: String.t() | nil
   def pick_choice(choices) do
     choices
     |> Enum.map(fn {word, frequency} ->
-      length = String.length(word)
-      {word, length * length * frequency}
+      length = String.length(word) / 10
+      score = Enum.sum([length, frequency ** 0.1]) / 2
+      {word, score}
     end)
     |> Enum.sort_by(&elem(&1, 1), :desc)
     |> List.first()

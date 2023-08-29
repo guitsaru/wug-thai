@@ -3,6 +3,8 @@ defmodule Wug.Thai.Dictionary do
 
   @default_dictionary_file "../../../data/words_th.txt"
   @default_frequency_file "../../../data/tnc_freq.txt"
+  @external_resource @default_dictionary_file
+  @external_resource @default_frequency_file
 
   @derive {Inspect, only: [:count]}
   defstruct count: 0, data: %{}
