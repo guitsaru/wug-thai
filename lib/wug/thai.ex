@@ -6,8 +6,10 @@ defmodule Wug.Thai do
 
   @behaviour Wug.Language
 
+  @dictionary Dictionary.default()
+
   @spec dictionary :: Dictionary.t()
-  def dictionary, do: Dictionary.default()
+  def dictionary, do: @dictionary
 
   @spec sentencize(Wug.Document.t(), Keyword.t()) :: Wug.Document.t()
   def sentencize(document, _options \\ []) do
@@ -16,7 +18,7 @@ defmodule Wug.Thai do
 
   @spec tokenize(Wug.Document.t(), Keyword.t()) :: Wug.Document.t()
   def tokenize(document, options \\ []) do
-    dictionary = Keyword.get(options, :dictionary, dictionary())
+    dictionary = Keyword.get(options, :dictionary) || dictionary()
     opts = Keyword.put(options, :dictionary, dictionary)
 
     Tokenizer.tokenize(document, opts)
