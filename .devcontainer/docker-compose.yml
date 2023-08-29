@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  elixir:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Elixir Version: 1.9, 1.10, 1.10.4, ...
+        VARIANT: "1.15"
+
+    volumes:
+      - ..:/workspace:cached
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+  livebook:
+    image: ghcr.io/livebook-dev/livebook
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      - LIVEBOOK_DISTRIBUTION=livebook
+      - RELEASE_NODE=livebook@127.0.0.1
+      - LIVEBOOK_TOKEN_ENABLED=false
+    volumes:
+      - ..:/workspace:cached

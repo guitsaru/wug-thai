@@ -1,0 +1,3 @@
+%{
+  "wug": {:git, "https://github.com/guitsaru/wug.git", "9397e125846232a4186e2ffa9f94532903f1e7ea", [branch: "main"]},
+}
