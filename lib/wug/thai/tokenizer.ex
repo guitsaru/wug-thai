@@ -203,7 +203,9 @@ defmodule Wug.Thai.Tokenizer do
     |> Enum.reverse()
   end
 
-  @spec can_start_a_token?(String.t(), options) :: boolean
+  @spec can_start_a_token?(String.t() | nil, options) :: boolean
+  defp can_start_a_token?(nil, _options), do: true
+
   defp can_start_a_token?(character, dictionary: dictionary) do
     !is_thai?(character) || Dictionary.partial?(dictionary, character)
   end
