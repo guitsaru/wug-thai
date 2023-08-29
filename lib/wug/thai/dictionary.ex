@@ -2,6 +2,7 @@ defmodule Wug.Thai.Dictionary do
   @moduledoc false
 
   @default_dictionary_file "../../../data/words_th.txt"
+  @default_frequency_file "../../../data/tnc_freq.txt"
 
   @derive {Inspect, only: [:count]}
   defstruct count: 0, data: %{}
@@ -11,22 +12,31 @@ defmodule Wug.Thai.Dictionary do
           data: map()
         }
 
-  @spec new(String.t()) :: t()
-  def new(path \\ @default_dictionary_file) do
+  @spec new() :: t()
+  def new do
+    %__MODULE__{}
+  end
+
+  @spec default() :: t()
+  def default do
+    frequencies = load_frequencies()
+    max = frequencies |> Map.values() |> Enum.max()
+
     __DIR__
-    |> Path.join(path)
+    |> Path.join(@default_dictionary_file)
     |> File.stream!()
     |> Stream.map(&String.trim/1)
     |> Enum.reduce(%__MODULE__{}, fn word, dictionary ->
-      add(dictionary, word)
+      frequency = Map.get(frequencies, word, 0)
+      add(dictionary, word, frequency / max)
     end)
   end
 
-  @spec add(t(), String.t()) :: t()
-  def add(dictionary, word) when is_binary(word) do
+  @spec add(t(), String.t(), float()) :: t()
+  def add(dictionary, word, frequency \\ 0.0) when is_binary(word) do
     characters = String.graphemes(word)
 
-    data = insert(dictionary.data, characters)
+    data = insert(dictionary.data, characters, frequency)
 
     %{dictionary | data: data, count: dictionary.count + 1}
   end
@@ -51,20 +61,45 @@ defmodule Wug.Thai.Dictionary do
     !!get_in(dictionary.data, characters)
   end
 
-  @spec insert(map, [String.t()]) :: map
-  defp insert(map, [next | rest]) do
+  @spec get_frequency(t(), String.t()) :: float()
+  def get_frequency(dictionary, word) when is_binary(word) do
+    characters = String.graphemes(word)
+
+    value = get_in(dictionary.data, characters)
+
+    cond do
+      value == true -> 1.0
+      is_map(value) -> Map.get(value, true, 0.0)
+      true -> 0.0
+    end
+  end
+
+  @spec insert(map, [String.t()], any) :: map
+  defp insert(map, [next | rest], value) do
     {_, new} =
       Map.get_and_update(map, next, fn current ->
         case current do
-          nil -> {current, insert(%{}, rest)}
-          map -> {map, insert(map, rest)}
+          nil -> {current, insert(%{}, rest, value)}
+          map -> {map, insert(map, rest, value)}
         end
       end)
 
     new
   end
 
-  defp insert(map, []) do
-    Map.put(map, true, true)
+  defp insert(map, [], value) do
+    Map.put(map, true, value)
+  end
+
+  defp load_frequencies do
+    __DIR__
+    |> Path.join(@default_frequency_file)
+    |> File.stream!()
+    |> Stream.map(&String.trim/1)
+    |> Enum.reduce(%{}, fn line, frequencies ->
+      [word, count] = String.split(line, "\t")
+
+      Map.put(frequencies, String.trim(word), String.to_integer(count))
+    end)
   end
 end

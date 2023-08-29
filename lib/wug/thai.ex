@@ -7,7 +7,7 @@ defmodule Wug.Thai do
   @behaviour Wug.Language
 
   @spec dictionary :: Dictionary.t()
-  def dictionary, do: Dictionary.new()
+  def dictionary, do: Dictionary.default()
 
   @spec sentencize(Wug.Document.t()) :: Wug.Document.t()
   def sentencize(document) do

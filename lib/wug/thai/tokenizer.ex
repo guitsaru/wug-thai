@@ -109,7 +109,7 @@ defmodule Wug.Thai.Tokenizer do
   end
 
   defp do_find_word(scanner, starting_index, choices, dictionary) do
-    {character, scanner} = Scanner.next(scanner)
+    character = Scanner.current(scanner)
 
     if character do
       word =
@@ -119,12 +119,14 @@ defmodule Wug.Thai.Tokenizer do
       choices =
         if Dictionary.contains?(dictionary, word) &&
              can_start_a_token?(Scanner.peek(scanner), dictionary: dictionary) do
-          [{word, 1} | choices]
+          frequency = Dictionary.get_frequency(dictionary, word)
+          [{word, frequency} | choices]
         else
           choices
         end
 
       if Dictionary.partial?(dictionary, word) do
+        {_, scanner} = Scanner.next(scanner)
         do_find_word(scanner, starting_index, choices, dictionary)
       else
         pick_choice(choices)
@@ -137,7 +139,12 @@ defmodule Wug.Thai.Tokenizer do
   @spec pick_choice([String.t()]) :: String.t() | nil
   def pick_choice(choices) do
     choices
-    |> Enum.sort_by(&elem(&1, 1))
+    |> Enum.map(fn {word, frequency} ->
+      length = String.length(word)
+      {word, length * length * frequency}
+    end)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> IO.inspect()
     |> List.first()
     |> case do
       nil -> nil
