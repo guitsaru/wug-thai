@@ -144,7 +144,6 @@ defmodule Wug.Thai.Tokenizer do
       {word, length * length * frequency}
     end)
     |> Enum.sort_by(&elem(&1, 1), :desc)
-    |> IO.inspect()
     |> List.first()
     |> case do
       nil -> nil
