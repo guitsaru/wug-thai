@@ -27,4 +27,11 @@ defmodule Wug.Array do
   def get(array, index) do
     Map.get(array.data, index)
   end
+
+  @spec slice(t(), non_neg_integer(), pos_integer()) :: List.t()
+  def slice(array, start, length) do
+    Enum.map(start..(start + length - 1), fn index ->
+      get(array, index)
+    end)
+  end
 end

@@ -1,34 +1,48 @@
 defmodule Wug.Scanner do
-  @moduledoc "Implements a scanner for Wug documents."
+  @moduledoc "Implements a text scanner"
 
   alias Wug.Array
-  alias Wug.Document
 
-  @type t :: %__MODULE__{data: Array.t(), pointer: non_neg_integer()}
-  @typep maybe_token :: Token.t() | nil
+  @type t :: %__MODULE__{data: Array.t(), pointer: integer()}
+  @typep maybe_item :: any | nil
 
-  defstruct data: Array.new(), pointer: 0
+  defstruct data: Array.new(), pointer: -1
 
-  @spec new(Document.t()) :: t()
-  def new(document) do
-    %__MODULE__{data: Array.new(document.tokens), pointer: 0}
+  @spec new(list()) :: t()
+  def new(list) do
+    %__MODULE__{data: Array.new(list), pointer: -1}
   end
 
-  @spec current(t()) :: maybe_token
+  @spec current(t()) :: maybe_item
   def current(scanner), do: Array.get(scanner.data, scanner.pointer)
 
-  @spec next(t()) :: maybe_token
+  @spec next(t()) :: {maybe_item, t()}
   def next(scanner) do
     scanner = %{scanner | pointer: scanner.pointer + 1}
-    current(scanner)
+    {current(scanner), scanner}
   end
 
-  @spec previous(t()) :: maybe_token
+  @spec previous(t()) :: {maybe_item, t()}
   def previous(scanner) do
     scanner = %{scanner | pointer: scanner.pointer - 1}
-    current(scanner)
+    {current(scanner), scanner}
   end
 
-  @spec peek(t(), integer()) :: maybe_token
+  @spec peek(t(), integer()) :: maybe_item
   def peek(scanner, count \\ 1), do: Array.get(scanner.data, scanner.pointer + count)
+
+  @spec set_pointer(t(), non_neg_integer()) :: t()
+  def set_pointer(scanner, pointer) do
+    %{scanner | pointer: pointer}
+  end
+
+  @spec is_end?(t()) :: boolean()
+  def is_end?(scanner) do
+    scanner.pointer >= scanner.data.length
+  end
+
+  @spec slice(t(), non_neg_integer(), pos_integer()) :: List.t()
+  def slice(scanner, start, length) do
+    Array.slice(scanner.data, start, length)
+  end
 end

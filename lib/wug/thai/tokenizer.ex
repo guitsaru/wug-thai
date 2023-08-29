@@ -8,6 +8,7 @@ defmodule Wug.Thai.Tokenizer do
   """
 
   alias Wug.Document
+  alias Wug.Scanner
   alias Wug.Thai.Dictionary
   alias Wug.Token
   alias Wug.Tokenizer
@@ -20,128 +21,127 @@ defmodule Wug.Thai.Tokenizer do
   @spec tokenize(Document.t(), options()) :: Document.t()
   def tokenize(doc, [dictionary: dictionary] = options) when not is_nil(dictionary) do
     characters = String.graphemes(doc.text)
-    tokens = do_tokenize(characters, [], 0, Token.new(0), options)
+    scanner = Scanner.new(characters)
+    tokens = do_tokenize(scanner, [], options)
     tokens = combine_unks(tokens)
 
     %{doc | tokens: tokens}
   end
 
   @spec do_tokenize(
-          [String.t()],
+          Scanner.t(),
           [Token.t()],
-          non_neg_integer(),
-          Token.t(),
           options
         ) :: [
           Token.t()
         ]
-  defp do_tokenize([], tokens, index, current, _opts) do
-    case current.text do
-      "" -> Enum.reverse(tokens)
-      _ -> tokens |> push_token(%{current | end: index - 1, type: :unk}) |> Enum.reverse()
-    end
+  defp do_tokenize(scanner, tokens, options) do
+    {current, scanner} = Scanner.next(scanner)
+
+    parse_current(current, scanner, tokens, options)
   end
 
-  defp do_tokenize([h | t], tokens, index, current, options) do
-    case parse_character(h, options) do
+  defp parse_current(nil, _, tokens, _), do: Enum.reverse(tokens)
+
+  defp parse_current(char, scanner, tokens, options) do
+    case parse_character(char, options) do
       {:space, _} ->
         tokens =
-          case current.text do
-            "" -> tokens
-            _ -> push_token(tokens, %{current | end: index - 1})
-          end
+          push_token(tokens, %{
+            Token.new(scanner.pointer)
+            | text: to_string(char),
+              end: scanner.pointer,
+              type: :space
+          })
 
-        tokens =
-          push_token(tokens, %{Token.new(index) | text: to_string(h), end: index, type: :space})
-
-        current = Token.new(index + 1)
-        do_tokenize(t, tokens, index + 1, current, options)
+        do_tokenize(scanner, tokens, options)
 
       {:punctuation, punctuation} ->
         tokens =
-          case current.text do
-            "" -> tokens
-            _ -> push_token(tokens, %{current | end: index - 1, type: :word})
-          end
+          push_token(tokens, %{
+            Token.new(scanner.pointer)
+            | text: punctuation,
+              end: scanner.pointer,
+              type: :punct
+          })
 
-        tokens =
-          push_token(tokens, %{Token.new(index) | text: punctuation, end: index, type: :punct})
+        do_tokenize(scanner, tokens, options)
 
-        current = Token.new(index + 1)
-        do_tokenize(t, tokens, index + 1, current, options)
+      {:character, _} ->
+        {token, scanner} = find_word(scanner, options)
 
-      {:character, character} ->
-        {token, rest} = find_word([character | t], index, options)
-        length = token.text |> String.graphemes() |> Enum.count()
-
-        tokens =
-          case current.text do
-            "" ->
-              tokens
-
-            _ ->
-              push_token(tokens, %{current | end: current.start + length - 1})
-          end
-
-        tokens = push_token(tokens, %{token | end: index + length - 1})
-        current = Token.new(index)
-        do_tokenize(rest, tokens, index + length, current, options)
+        tokens = push_token(tokens, %{token | end: scanner.pointer})
+        do_tokenize(scanner, tokens, options)
     end
   end
 
-  @spec find_word([String.t()], non_neg_integer(), options) ::
-          {maybe_token, [String.t()]}
-  defp find_word(characters, index, dictionary: dictionary) do
-    longest = do_find_word(characters, "", nil, dictionary)
+  @spec find_word(Scanner.t(), options) ::
+          {maybe_token, Scanner.t()}
+  defp find_word(scanner, dictionary: dictionary) do
+    index = scanner.pointer
+    word = do_find_word(scanner, index, [], dictionary)
 
-    case longest do
+    case word do
       nil ->
-        [t | remaining] = characters
-        word = "" <> t
+        word = "" <> Scanner.current(scanner)
 
         token = %{
           Token.new(index)
           | text: word,
             type: :unk,
-            end: index + String.length(word) - 1
+            end: index
         }
 
-        {token, remaining}
+        {token, scanner}
 
       word ->
+        length = String.length(word)
+
         token = %{
           Token.new(index)
           | text: word,
             type: :word,
-            end: index + String.length(word) - 1
+            end: index + length - 1
         }
 
-        remaining = Enum.drop(characters, String.length(word))
-
-        {token, remaining}
+        {token, Scanner.set_pointer(scanner, index + length - 1)}
     end
   end
 
-  defp do_find_word(remaining, prev, longest, dictionary) do
-    case remaining do
-      [] ->
-        longest
+  defp do_find_word(scanner, starting_index, choices, dictionary) do
+    {character, scanner} = Scanner.next(scanner)
 
-      [char | rest] ->
-        new = prev <> char
+    if character do
+      word =
+        Scanner.slice(scanner, starting_index, scanner.pointer - starting_index + 1)
+        |> Enum.join()
 
-        if Dictionary.contains?(dictionary, new) || Dictionary.partial?(dictionary, new) do
-          longest =
-            if Dictionary.contains?(dictionary, new) do
-              new
-            else
-              longest
-            end
-
-          do_find_word(rest, new, longest, dictionary)
+      choices =
+        if Dictionary.contains?(dictionary, word) &&
+             can_start_a_token?(Scanner.peek(scanner), dictionary: dictionary) do
+          [{word, 1} | choices]
         else
-          longest
+          choices
         end
+
+      if Dictionary.partial?(dictionary, word) do
+        do_find_word(scanner, starting_index, choices, dictionary)
+      else
+        pick_choice(choices)
+      end
+    else
+      pick_choice(choices)
+    end
+  end
+
+  @spec pick_choice([String.t()]) :: String.t() | nil
+  def pick_choice(choices) do
+    choices
+    |> Enum.sort_by(&elem(&1, 1))
+    |> List.first()
+    |> case do
+      nil -> nil
+      {word, _} -> word
     end
   end
 
@@ -151,6 +151,13 @@ defmodule Wug.Thai.Tokenizer do
   @spec is_punctuation?(String.t(), options()) :: boolean
   def is_punctuation?(character, options) do
     Enum.member?(Keyword.get(options, :punctuation, []), character)
+  end
+
+  @spec is_thai?(String.t()) :: boolean
+  def is_thai?(string) do
+    string
+    |> String.to_charlist()
+    |> Enum.all?(&(&1 in 0x0E00..0x0E7F))
   end
 
   @spec parse_character(String.t(), options) ::
@@ -188,5 +195,10 @@ defmodule Wug.Thai.Tokenizer do
       end
     end)
     |> Enum.reverse()
+  end
+
+  @spec can_start_a_token?(String.t(), options) :: boolean
+  defp can_start_a_token?(character, dictionary: dictionary) do
+    !is_thai?(character) || Dictionary.partial?(dictionary, character)
   end
 end
