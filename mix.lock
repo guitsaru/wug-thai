@@ -1,4 +1,4 @@
 %{
   "math": {:hex, :math, "0.7.0", "12af548c3892abf939a2e242216c3e7cbfb65b9b2fe0d872d05c6fb609f8127b", [:mix], [], "hexpm", "7987af97a0c6b58ad9db43eb5252a49fc1dfe1f6d98f17da9282e297f594ebc2"},
-  "wug": {:git, "https://github.com/guitsaru/wug.git", "da50967d76059e0db456f0c5bb0f328a122035d6", [branch: "main"]},
+  "wug": {:git, "git@github.com:guitsaru/wug.git", "1719f69ab85affb38bb950fb1444970742d253e0", [branch: "main"]},
 }
