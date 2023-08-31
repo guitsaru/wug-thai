@@ -45,6 +45,11 @@ defmodule Wug.Thai.Tokenizer do
 
   defp parse_current(char, scanner, tokens, options) do
     case parse_character(char, options) do
+      {:token, _} ->
+        {token, scanner} = find_token(scanner, options)
+        tokens = push_token(tokens, %{token | end: scanner.pointer - 1})
+        do_tokenize(scanner, tokens, options)
+
       {:space, _} ->
         tokens =
           push_token(tokens, %{
@@ -136,8 +141,28 @@ defmodule Wug.Thai.Tokenizer do
     end
   end
 
+  defp find_token(scanner, _opts) do
+    token = %{Token.new(scanner.pointer) | text: ""}
+
+    do_find_token(scanner, token)
+  end
+
+  defp do_find_token(scanner, token) do
+    case Scanner.next(scanner) do
+      {"}", scanner} ->
+        {token, scanner}
+
+      {nil, scanner} ->
+        {token, scanner}
+
+      {other, scanner} ->
+        token = %{token | text: token.text <> other, end: scanner.pointer}
+        do_find_token(scanner, token)
+    end
+  end
+
   @spec pick_choice([{String.t(), float()}]) :: String.t() | nil
-  def pick_choice(choices) do
+  defp pick_choice(choices) do
     choices
     |> Enum.map(fn {word, frequency} ->
       length = String.length(word) / 10
@@ -173,6 +198,7 @@ defmodule Wug.Thai.Tokenizer do
           | {:character, String.t()}
   defp parse_character(character, options) do
     cond do
+      character == "{" -> {:token, character}
       is_space?(character) -> {:space, character}
       is_punctuation?(character, options) -> {:punctuation, character}
       true -> {:character, character}
