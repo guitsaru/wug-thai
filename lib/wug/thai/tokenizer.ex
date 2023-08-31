@@ -165,13 +165,11 @@ defmodule Wug.Thai.Tokenizer do
   defp pick_choice(choices) do
     choices
     |> Enum.map(fn {word, frequency} ->
-      IO.inspect(frequency, label: "frequency")
       length = String.length(word) / 10
       score = Enum.sum([length, frequency ** 0.1]) / 2
       {word, score}
     end)
     |> Enum.sort_by(&elem(&1, 1), :desc)
-    |> IO.inspect()
     |> List.first()
     |> case do
       nil -> nil
