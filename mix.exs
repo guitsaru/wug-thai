@@ -21,7 +21,7 @@ defmodule Wug.Thai.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:wug, git: "git@github.com:guitsaru/wug.git", branch: "main"}
+      {:wug, git: "https://github.com/guitsaru/wug.git", branch: "main"}
     ]
   end
 end
