@@ -142,7 +142,7 @@ defmodule Wug.Thai.Tokenizer do
   end
 
   defp find_token(scanner, _opts) do
-    token = %{Token.new(scanner.pointer) | text: ""}
+    token = %{Token.new(scanner.pointer) | text: "", type: :word}
 
     do_find_token(scanner, token)
   end
@@ -165,11 +165,13 @@ defmodule Wug.Thai.Tokenizer do
   defp pick_choice(choices) do
     choices
     |> Enum.map(fn {word, frequency} ->
+      IO.inspect(frequency, label: "frequency")
       length = String.length(word) / 10
       score = Enum.sum([length, frequency ** 0.1]) / 2
       {word, score}
     end)
     |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> IO.inspect()
     |> List.first()
     |> case do
       nil -> nil
